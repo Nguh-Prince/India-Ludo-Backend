@@ -2,21 +2,30 @@ const express = require("express");
 const { createServer } = require("node:http");
 const { join } = require("node:path");
 const { Server } = require("socket.io");
-// const cors = require('cors');
+const http = require("http");
+const cors = require('cors');
 
-// const app = express();
-// app.use(cors());
-// const server = createServer(app);
-// const io = new Server(server);
-const io = new Server({
+const app = express();
+app.use(cors("*"));
+
+const server = http.createServer(app)
+
+const io = new Server(server, {
+  maxHttpBufferSize: 1e8,
   cors: {
     origin: "*",
-  },
+    methods: ["GET", "POST", "DELETE", "PATCH", "PUT"]
+  }
 });
 
-// app.get('/', (req, res) => {
-//   res.sendFile(join(__dirname, 'index.html'));
-// });
+app.use(cors("*"))
+
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  // res.sendFile(join(__dirname, 'index.html'));
+  return res.json({message: "The server is live!"})
+});
 
 var colorsTaken = [];
 const numberOfPlayers = 2;
@@ -64,6 +73,8 @@ const getSequenceFromListOfColors = (listOfColors, indexOfFirstColor) => {
 }
 
 io.on("connection", (socket) => {
+  io.emit("userConnected", socket.id)
+
   console.log("Client connected")
   socket.on("chat message", (msg) => {
     io.emit("chat message", msg);
@@ -120,6 +131,6 @@ io.on("connection", (socket) => {
   });
 });
 
-io.listen(4000, () => {
+server.listen(4000, () => {
   console.log("server running at http://172.20.10.5:4000");
 });

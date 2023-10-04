@@ -64,6 +64,7 @@ const getSequenceFromListOfColors = (listOfColors, indexOfFirstColor) => {
 }
 
 io.on("connection", (socket) => {
+  console.log("Client connected")
   socket.on("chat message", (msg) => {
     io.emit("chat message", msg);
   });

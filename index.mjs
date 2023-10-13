@@ -1,28 +1,14 @@
-const express = require("express");
-const { createServer } = require("node:http");
-const { join } = require("node:path");
-const { Server } = require("socket.io");
-const http = require("http");
-const cors = require('cors');
-const passport = require('passport'); 
-const cookieSession = require('cookie-session'); 
-require('./passport'); 
-
-const dotenv = require('dotenv')
-dotenv.config();
-const {CONFIG} = require('./utils/config')
-const authRoute = require('./routes/authRouter.js')
+import express from "express";
+import { Server } from "socket.io";
+import http from 'http';
+import cors from 'cors';
+import "./loadEnvironment.mjs";
+import games from "./routes/games.mjs";
+import { createServer } from "node:http";
+import { join } from "node:path";
 
 const app = express();
 app.use(cors("*"));
-
-// setting up cookies 
-app.use(cookieSession({ 
-  name: 'google-auth-session', 
-  keys: ['key1', 'key2'] 
-})); 
-app.use(passport.initialize()); 
-app.use(passport.session()); 
 
 const server = http.createServer(app)
 
@@ -39,8 +25,8 @@ app.use(cors("*"))
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  res.sendFile(join(__dirname, 'test.html'));
-  // return res.json({message: "The server is live!"})
+  // res.sendFile(join(__dirname, 'index.html'));
+  return res.json({message: "The server is live!"})
 });
 
 var colorsTaken = [];
@@ -146,43 +132,3 @@ io.on("connection", (socket) => {
     console.log(`Client disconnected`)
   });
 });
-
-
-
-// ===============================================
-          // ENDPOINT FOR OAUTH
-//================================================
-// Auth  
-// app.get('/auth/google' , passport.authenticate('google', { scope: 
-//   [ 'email', 'profile' ] 
-// })); 
-
-// Auth Callback 
-// app.get( '/auth/callback', 
-//   passport.authenticate( 'google', { 
-//       successRedirect: '/auth/callback/success', 
-//       failureRedirect: '/auth/callback/failure'
-// })); 
-
-// Success  
-app.get('/auth/callback/success' , (req , res) => { 
-  console.log("User: ",req.user)
-  if(!req.user) 
-      res.redirect('/auth/callback/failure'); 
-  res.send("Welcome " + req.user.email); 
-}); 
-
-// failure 
-app.get('/auth/callback/failure' , (req , res) => { 
-  res.send("Error"); 
-}) 
-
-app.use("/auth/google",authRoute);
-
-
-
-
-server.listen(4000, () => {
-  console.log("server running at http://172.20.10.5:4000");
-});
-

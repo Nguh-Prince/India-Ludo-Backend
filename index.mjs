@@ -1,11 +1,10 @@
-const express = require("express");
-const { createServer } = require("node:http");
-const { join } = require("node:path");
-const { Server } = require("socket.io");
-const http = require("http");
-const cors = require('cors');
-
-const {MongoClient} = require('mongodb');
+// const express = require("express");
+import express from "express";
+import { Server } from "socket.io";
+import http from 'http';
+import cors from 'cors';
+import "./loadEnvironment.mjs";
+import games from "./routes/games.mjs";
 
 const app = express();
 app.use(cors("*"));
@@ -28,6 +27,8 @@ app.get('/', (req, res) => {
   // res.sendFile(join(__dirname, 'index.html'));
   return res.json({message: "The server is live!"})
 });
+
+app.use("/games", games);
 
 var colorsTaken = [];
 const numberOfPlayers = 2;
@@ -132,29 +133,6 @@ io.on("connection", (socket) => {
     console.log(`Client disconnected`)
   });
 });
-
-async function main() {
-  const uri = "mongodb+srv://nguhprince1:hLK1saVssBmvATem@cluster0.5dlksug.mongodb.net/?retryWrites=true&w=majority";
-  const client = new MongoClient(uri);
-
-  try {
-    await client.connect();
-    await listDatabases(client);
-  } catch (error) {
-    console.error(error)
-  } finally {
-    await client.close();
-  }
-}
-
-async function listDatabases(client){
-  databasesList = await client.db().admin().listDatabases();
-
-  console.log("Databases:");
-  databasesList.databases.forEach(db => console.log(` - ${db.name}`));
-};
-
-main().catch(console.error);
 
 server.listen(4000, () => {
   console.log("server running at http://172.20.10.5:4000");

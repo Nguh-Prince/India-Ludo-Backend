@@ -5,6 +5,8 @@ const { Server } = require("socket.io");
 const http = require("http");
 const cors = require('cors');
 
+const {MongoClient} = require('mongodb');
+
 const app = express();
 app.use(cors("*"));
 
@@ -130,6 +132,29 @@ io.on("connection", (socket) => {
     console.log(`Client disconnected`)
   });
 });
+
+async function main() {
+  const uri = "mongodb+srv://nguhprince1:hLK1saVssBmvATem@cluster0.5dlksug.mongodb.net/?retryWrites=true&w=majority";
+  const client = new MongoClient(uri);
+
+  try {
+    await client.connect();
+    await listDatabases(client);
+  } catch (error) {
+    console.error(error)
+  } finally {
+    await client.close();
+  }
+}
+
+async function listDatabases(client){
+  databasesList = await client.db().admin().listDatabases();
+
+  console.log("Databases:");
+  databasesList.databases.forEach(db => console.log(` - ${db.name}`));
+};
+
+main().catch(console.error);
 
 server.listen(4000, () => {
   console.log("server running at http://172.20.10.5:4000");

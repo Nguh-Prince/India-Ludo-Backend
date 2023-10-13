@@ -1,10 +1,11 @@
-// const express = require("express");
 import express from "express";
 import { Server } from "socket.io";
 import http from 'http';
 import cors from 'cors';
 import "./loadEnvironment.mjs";
 import games from "./routes/games.mjs";
+import { createServer } from "node:http";
+import { join } from "node:path";
 
 const app = express();
 app.use(cors("*"));
@@ -27,8 +28,6 @@ app.get('/', (req, res) => {
   // res.sendFile(join(__dirname, 'index.html'));
   return res.json({message: "The server is live!"})
 });
-
-app.use("/games", games);
 
 var colorsTaken = [];
 const numberOfPlayers = 2;
@@ -132,8 +131,4 @@ io.on("connection", (socket) => {
   socket.on("disconnect", (reason) => {
     console.log(`Client disconnected`)
   });
-});
-
-server.listen(4000, () => {
-  console.log("server running at http://172.20.10.5:4000");
 });

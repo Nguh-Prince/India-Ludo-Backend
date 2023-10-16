@@ -89,3 +89,29 @@ export const isEqual = (obj1, obj2) => {
   return objectsEqual;
 };
 
+const getSequenceFromListOfColors = (listOfColors, indexOfFirstColor) => {
+  let firstColor = listOfColors[indexOfFirstColor];
+  let sequence = {}
+
+  let color = firstColor;
+
+  while (true) {
+    let next = defaultSequence[color].next;
+
+    while (!listOfColors.includes(next)) {
+      next = defaultSequence[next].next;
+    }
+
+    sequence[color] = {
+      next: next
+    }
+
+    color = next
+
+    if (color === firstColor) {
+      break
+    }
+  }
+
+  return sequence
+}

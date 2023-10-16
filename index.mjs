@@ -3,12 +3,25 @@ import { Server } from "socket.io";
 import http from 'http';
 import cors from 'cors';
 import "./loadEnvironment.mjs";
-import games from "./routes/games.mjs";
 import { createServer } from "node:http";
 import { join } from "node:path";
+import authentication from "./routes/authentication.mjs";
+import mongoose from "mongoose";
+import { defaultSequence } from "./utils/index.mjs";
+import { jsonParser, urlencodedParser } from "./utils/parsers.mjs";
+
+const connectionString = process.env.ATLAS_URI || "";
+
+console.log(`About to connect to MongoDB via mongoose`)
+mongoose.connect(connectionString).catch((error) => {
+  console.log(`Error connecting to MongoDB via mongoose`)
+  console.log(error)
+});
+mongoose.connection.on('connected', () => {
+  console.log("Connected to MongoDB through mongoose")
+})
 
 const app = express();
-app.use(cors("*"));
 
 const server = http.createServer(app)
 
@@ -22,6 +35,24 @@ const io = new Server(server, {
 
 app.use(cors("*"))
 
+app.use(jsonParser)
+app.use(urlencodedParser)
+
+app.use(function(req, res, next) {
+  if (req.headers && req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Token') {
+    jsonwebtoken.verify(req.headers.authorization.split(' ')[1], 'RESTFULAPIs', function(err, decode) {
+      if (err) req.user = undefined;
+      req.user = decode;
+      next();
+    });
+  } else {
+    req.user = undefined;
+    next();
+  }
+});
+
+app.use("/auth", authentication);
+
 app.use(express.json());
 
 app.get('/', (req, res) => {
@@ -31,48 +62,6 @@ app.get('/', (req, res) => {
 
 var colorsTaken = [];
 const numberOfPlayers = 2;
-
-const defaultSequence = {
-  green: {
-    next: "red",
-  },
-  red: {
-    next: "blue",
-  },
-  blue: {
-    next: "yellow",
-  },
-  yellow: {
-    next: "green",
-  },
-};
-
-const getSequenceFromListOfColors = (listOfColors, indexOfFirstColor) => {
-  let firstColor = listOfColors[indexOfFirstColor];
-  let sequence = {}
-
-  let color = firstColor;
-
-  while (true) {
-    let next = defaultSequence[color].next;
-
-    while (!listOfColors.includes(next)) {
-      next = defaultSequence[next].next;
-    }
-
-    sequence[color] = {
-      next: next
-    }
-
-    color = next
-
-    if (color === firstColor) {
-      break
-    }
-  }
-
-  return sequence
-}
 
 io.on("connection", (socket) => {
   io.emit("userConnected", socket.id)
@@ -132,3 +121,9 @@ io.on("connection", (socket) => {
     console.log(`Client disconnected`)
   });
 });
+
+const PORT = 4000;
+
+server.listen(PORT, () => {
+  console.log(`Server running on port: ${PORT}`)
+})

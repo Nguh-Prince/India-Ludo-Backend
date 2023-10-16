@@ -9,6 +9,7 @@ import authentication from "./routes/authentication.mjs";
 import mongoose from "mongoose";
 import { defaultSequence } from "./utils/index.mjs";
 import { jsonParser, urlencodedParser } from "./utils/parsers.mjs";
+import jsonwebtoken from "jsonwebtoken";
 
 const connectionString = process.env.ATLAS_URI || "";
 
@@ -43,6 +44,9 @@ app.use(function(req, res, next) {
     jsonwebtoken.verify(req.headers.authorization.split(' ')[1], 'RESTFULAPIs', function(err, decode) {
       if (err) req.user = undefined;
       req.user = decode;
+
+      console.log(`In jwt verification, decode is: `)
+      console.log(decode)
       next();
     });
   } else {

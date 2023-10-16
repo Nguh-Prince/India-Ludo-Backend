@@ -28,13 +28,16 @@ router.post("/signup", (req, res) => {
 
   console.log(`Created new user. Details: ${newUser.toString()}`)
 
+  if (newUser.validate(req.body.password)) {
   // Save newUser object to database
   newUser.save().then(() => {
     console.log(`User saved successfully`)
   }).catch((reason) => {
     console.log(`Error saving the user, reason: `)
     console.log(reason)
-  })
+  })} else {
+    console.log(`The user object is not valid`)
+  }
 });
 
 router.post("/login", (req, res) => {

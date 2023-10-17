@@ -1,5 +1,10 @@
 import mongoose from "mongoose";
 import crypto from "crypto";
+import {
+  validateEmail,
+  validateName,
+  validatePassword,
+} from "../utils/validators.mjs";
 
 const UserSchema = mongoose.Schema({
   name: {
@@ -44,34 +49,27 @@ UserSchema.methods.checkPassword = function (password) {
 UserSchema.methods.validateName = function (name = null) {
   name = name ? name : this.name;
 
-  let nameRegex = /^[a-zA-Z]+ [a-zA-Z]+$/;
-
-  console.log(`Invalid name`);
-
-  return nameRegex.test(name);
+  return validateName(name);
 };
 
 UserSchema.methods.validateEmail = function (email = null) {
   email = email ? email : this.email;
 
-  let emailRegex = /^[a-zA-Z]+ [a-zA-Z]+$/;
-
-  console.log(`Invalid email`)
-
-  return emailRegex.test(email);
+  return validateEmail(email);
 };
 
 UserSchema.methods.validatePassword = function (password) {
-  // password = password ? password : this.password
+  password = password ? password : this.password;
 
-  // let passwordRegex = /^[a-zA-Z]+ [a-zA-Z]+$/
+  return validatePassword(password);
+};
 
-  // return passwordRegex.test(password)
-  return true
-}
-
-UserSchema.methods.validate = function(password) {
-  return this.validateName(this.name) && this.validateEmail(this.email) && this.validatePassword(password)
-}
+UserSchema.methods._validate = function (password) {
+  return (
+    this.validateName(this.name) &&
+    this.validateEmail(this.email) &&
+    this.validatePassword(password)
+  );
+};
 
 export default mongoose.model("User", UserSchema);

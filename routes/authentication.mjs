@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { body, validationResult, checkSchema } from "express-validator";
 
 import User from "../models/user.mjs";
+import { validateName, validatePassword } from "../utils/validators.mjs";
 
 const router = express.Router();
 
@@ -36,6 +37,12 @@ router.post(
       }
     })
     .withMessage("The email address is already taken"),
+  body("password").custom((value) => {
+    return validatePassword(value);
+  }).withMessage("Password must be 8-30 characters, contain at least one of the following (uppercase letter, lowercase letter, number, special character)."),
+  body("name").custom((value) => {
+    return validateName(name)
+  }).withMessage("First and last name required"),
   (req, res) => {
     console.log(`Sign up endpoint requested, request body: `);
     console.log(req.body);
@@ -86,14 +93,15 @@ router.post(
       if (!user) {
         throw new Error("E-mail already in use");
       }
-    }).withMessage("Invalid email or password"),
+    })
+    .withMessage("Invalid email or password"),
   (req, res) => {
     const result = validationResult(req);
 
     if (!result.isEmpty()) {
       res.status(400).send({ errors: result.array() });
     }
-    
+
     let query = {
       email: req.body.email,
     };

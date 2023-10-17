@@ -37,19 +37,25 @@ router.post(
       }
     })
     .withMessage("The email address is already taken"),
-  body("password").custom((value) => {
-    return validatePassword(value);
-  }).withMessage("Password must be 8-30 characters, contain at least one of the following (uppercase letter, lowercase letter, number, special character)."),
-  body("name").custom((value) => {
-    return validateName(name)
-  }).withMessage("First and last name required"),
+  body("password")
+    .custom((value) => {
+      return validatePassword(value);
+    })
+    .withMessage(
+      "Password must be 8-30 characters, contain at least one of the following (uppercase letter, lowercase letter, number, special character)."
+    ),
+  body("name")
+    .custom((value) => {
+      return validateName(value);
+    })
+    .withMessage("First and last name required"),
   (req, res) => {
     console.log(`Sign up endpoint requested, request body: `);
     console.log(req.body);
     const result = validationResult(req);
 
     if (!result.isEmpty()) {
-      res.status(400).send({ errors: result.array() });
+      return res.status(400).send({ errors: result.array() });
     }
 
     // Creating empty user object
@@ -64,21 +70,19 @@ router.post(
     newUser.setPassword(req.body.password);
 
     console.log(`Created new user. Details: ${newUser.toString()}`);
+    
+    // Save newUser object to database
+    newUser
+      .save()
+      .then(() => {
+        console.log(`User saved successfully`);
 
-    if (newUser.validate(req.body.password)) {
-      // Save newUser object to database
-      newUser
-        .save()
-        .then(() => {
-          console.log(`User saved successfully`);
-        })
-        .catch((reason) => {
-          console.log(`Error saving the user, reason: `);
-          console.log(reason);
-        });
-    } else {
-      console.log(`The user object is not valid`);
-    }
+        return res.status(200).send({ message: "Registered successfully", data: { name: newUser.name, email: newUser.email, created: newUser.created } })
+      })
+      .catch((reason) => {
+        console.log(`Error saving the user, reason: `);
+        console.log(reason);
+      });
   }
 );
 

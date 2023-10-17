@@ -15,7 +15,7 @@ export function validateEmail(email) {
 }
 
 export function validateName(name) {
-    let nameRegex = /^[a-zA-Z]+ [a-zA-z]* [a-zA-Z]+$/;
+    let nameRegex = /^\s*(\S+)\s+(?:\S+\s+)*?(\S+)\s*$/;
 
     return validateString(name, nameRegex)
 }

@@ -5,6 +5,7 @@ import {
   validateName,
   validatePassword,
 } from "../utils/validators.mjs";
+import Token from "./token.mjs";
 
 const UserSchema = mongoose.Schema({
   name: {
@@ -21,6 +22,11 @@ const UserSchema = mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  verified: {
+    type: Boolean,
+    required: true,
+    default: false
+  }
 });
 
 UserSchema.methods.setPassword = function (password) {
@@ -70,6 +76,17 @@ UserSchema.methods._validate = function (password) {
     this.validateEmail(this.email) &&
     this.validatePassword(password)
   );
+};
+
+UserSchema.methods.generateVerificationToken = async function () {
+  const user = this;
+
+  const verificationToken = await new Token({
+    userId: user._id,
+    token: crypto.randomBytes(32).toString("hex"),
+  }).save()
+
+  return verificationToken;
 };
 
 export default mongoose.model("User", UserSchema);

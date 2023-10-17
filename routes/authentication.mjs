@@ -4,8 +4,21 @@ import { body, validationResult, checkSchema } from "express-validator";
 
 import User from "../models/user.mjs";
 import { validateName, validatePassword } from "../utils/validators.mjs";
+import nodemailer from "nodemailer";
+import Token from "../models/token.mjs";
 
 const router = express.Router();
+
+const transporter = nodemailer.createTransport({
+  service: process.env.EMAIL_SERVICE,
+  auth: {
+    user: process.env.EMAIL_USERNAME,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
 router.get("/", (req, res) => {
   return res.json({
@@ -70,14 +83,38 @@ router.post(
     newUser.setPassword(req.body.password);
 
     console.log(`Created new user. Details: ${newUser.toString()}`);
-    
+
     // Save newUser object to database
     newUser
       .save()
-      .then(() => {
+      .then(async () => {
         console.log(`User saved successfully`);
 
-        return res.status(200).send({ message: "Registered successfully", data: { name: newUser.name, email: newUser.email, created: newUser.created } })
+        const verificationToken = await newUser.generateVerificationToken();
+
+        const url = `${process.env.SERVER_URL}/auth/verify/${newUser._id}/${verificationToken.token}`;
+
+        await transporter.sendMail({
+          to: req.body.email,
+          subject: "Verify Account",
+          html: `Click <a href='${url}'>here</a> to confirm your email. This link expires in 7 days after which your account will be automatically deleted if it is not verified`,
+        }).then(() => {
+          console.log(`Successfully sent the email to ${newUser.email}`)
+        }).catch((reason) => {
+          console.log(`Error sending email to ${newUser.email}, reason: `)
+          console.log(reason)
+        });
+        return res
+          .status(200)
+          .send({
+            message: `Registered successfully. Sent a verification email to ${req.body.email}`,
+            data: {
+              id: newUser._id,
+              name: newUser.name,
+              email: newUser.email,
+              created: newUser.created,
+            },
+          });
       })
       .catch((reason) => {
         console.log(`Error saving the user, reason: `);
@@ -134,6 +171,29 @@ router.post(
       });
   }
 );
+
+router.get("/verify/:id/:token", async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id });
+
+    if (!user) return res.status(400).send("Invalid link");
+
+    const token = await Token.findOne({
+      userId: user._id,
+      token: req.params.token,
+    });
+
+    if (!token) return res.status(400).send("Invalid link");
+
+    await User.findById(user._id).updateOne({ verified: true });
+    await Token.findByIdAndRemove(token._id);
+
+    res.send("Email verified successfully");
+  } catch (error) {
+    res.status(400).send("An error occured");
+    console.log(error)
+  }
+});
 
 export const loginRequired = function (req, res, next) {
   if (req.user) {

@@ -3,7 +3,7 @@ export function validateString(string, regex) {
 }
 
 export function validatePassword(password) {
-    let passwordRegex = /^(?=.*[0-9])(?=.*[- ?!@#$%^&*\/\\])(?=.*[A-Z])(?=.*[a-z])[a-zA-Z0-9- ?!@#$%^&*\/\\]{8,30}$/
+    let passwordRegex = /^(?=.*[0-9])(?=.*[- ?!@#$%^&*\+-\/\\])(?=.*[A-Z])(?=.*[a-z])[a-zA-Z0-9- ?!@#$%^&*\+-\/]{8,30}$/
 
     return validateString(password, passwordRegex);
 }
@@ -15,7 +15,7 @@ export function validateEmail(email) {
 }
 
 export function validateName(name) {
-    let nameRegex = /^[a-zA-Z]+ [a-zA-Z]+$/;
+    let nameRegex = /^[a-zA-Z]+ [a-zA-z]* [a-zA-Z]+$/;
 
     return validateString(name, nameRegex)
 }

@@ -6,6 +6,7 @@ import {
   validatePassword,
 } from "../utils/validators.mjs";
 import Token from "./token.mjs";
+const Schema = mongoose.Schema;
 
 const UserSchema = mongoose.Schema({
   name: {
@@ -26,6 +27,11 @@ const UserSchema = mongoose.Schema({
     type: Boolean,
     required: true,
     default: false
+  },
+  roleId: {
+    type: Schema.Types.ObjectId,
+    ref: "role",
+    required: true,
   }
 });
 

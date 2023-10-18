@@ -234,6 +234,7 @@ router.post(
     .withMessage("Invalid email or password"),
   (req, res) => {
     const result = validationResult(req);
+    console.log(`Calling the login endpoint`)
 
     if (!result.isEmpty()) {
       res.status(400).send({ errors: result.array() });
@@ -243,7 +244,7 @@ router.post(
       email: req.body.email,
     };
 
-    User.findOne(query)
+    User.findOne(query).populate("roleId")
       .then((result) => {
         console.log(`Query returned result: `);
         console.log(result);
@@ -256,7 +257,7 @@ router.post(
 
         return res.json({
           token: jwt.sign(
-            { email: result.email, fullName: result.fullName, _id: result._id },
+            { email: result.email, fullName: result.name, _id: result._id, role: result.roleId },
             "RESTFULAPIs"
           ),
         });
@@ -342,7 +343,7 @@ router.post("/logout", async (req, res) => {
         token: accessToken,
       });
       await newBlacklist.save();
-      
+
       res.status(200).json({ message: "You are logged out!" });
     } else {
       return res.sendStatus(204);

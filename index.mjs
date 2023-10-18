@@ -11,6 +11,7 @@ import { defaultSequence } from "./utils/index.mjs";
 import { jsonParser, urlencodedParser } from "./utils/parsers.mjs";
 import jsonwebtoken from "jsonwebtoken";
 import Blacklist from "./models/blacklist.mjs";
+import Role from "./models/role.mjs";
 
 const connectionString = process.env.ATLAS_URI || "";
 
@@ -62,7 +63,9 @@ app.use(async function (req, res, next) {
         next();
       });
     } else { // token is blacklisted, the user logged out
+      console.log(`The token used is blacklisted`)
       req.user = null;
+      next();
     }
   } else {
     req.user = undefined;

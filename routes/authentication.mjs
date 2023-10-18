@@ -11,6 +11,7 @@ import crypto from "crypto";
 const router = express.Router();
 
 const bcryptSalt = process.env.BCRYPT_SALT;
+const SERVER_URL = process.env.SERVER_URL;
 
 const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE,
@@ -21,6 +22,9 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
+  host: process.env.EMAIL_HOST,
+  port: 465,
+  // secure: true
 });
 
 const requestPasswordReset = async (email) => {
@@ -30,7 +34,12 @@ const requestPasswordReset = async (email) => {
   let token = await ResetToken.findOne({ userId: user._id });
   if (token) await token.deleteOne();
   let resetToken = crypto.randomBytes(32).toString("hex");
-  const hash = crypto.pbkdf2Sync(resetToken, Number(bcryptSalt).toString(), 1000, 64, 'sha512').toString('hex');
+  const hash = crypto
+    .pbkdf2Sync(resetToken, Number(bcryptSalt).toString(), 1000, 64, "sha512")
+    .toString("hex");
+
+  // user can have only one password reset token at a time
+  await ResetToken.deleteMany({ userId: user._id });
 
   await new ResetToken({
     userId: user._id,
@@ -38,14 +47,25 @@ const requestPasswordReset = async (email) => {
     createdAt: Date.now(),
   }).save();
 
-  // const link = `${clientURL}/passwordReset?token=${resetToken}&id=${user._id}`;
-  // sendEmail(
-  //   user.email,
-  //   "Password Reset Request",
-  //   { name: user.name, link: link },
-  //   "./template/requestResetPassword.handlebars"
-  // );
-
+  const url = `${SERVER_URL}/auth/reset-password?token=${resetToken}&id=${user._id}`;
+  console.log(`SERVER_URL is ${SERVER_URL}`);
+  await transporter
+    .sendMail({
+      to: user.email,
+      subject: "Password reset link",
+      html: `Click <a href='${url}'>here</a> to reset your password`,
+    })
+    .then(() => {
+      console.log(
+        `Successfully sent password reset link to the email: ${user.email}`
+      );
+    })
+    .catch((reason) => {
+      console.log(
+        `Error sending password reset link to ${user.email}. Reason:`
+      );
+      console.log(reason);
+    });
   return resetToken;
 };
 
@@ -54,35 +74,43 @@ const resetPassword = async (userId, token, password) => {
   if (!passwordResetToken) {
     throw new Error("Invalid or expired password reset token");
   }
-  const hashedToken = crypto.pbkdf2Sync(token, Number(bcryptSalt).toString(), 1000, 64, 'sha512').toString('hex');
+  const hashedToken = crypto
+    .pbkdf2Sync(token, Number(bcryptSalt).toString(), 1000, 64, "sha512")
+    .toString("hex");
 
   const isValid = hashedToken === passwordResetToken.token;
 
   if (!isValid) {
     throw new Error("Invalid or expired password reset token");
   }
-  const hash = await bcrypt.hash(password, Number(bcryptSalt));
-  await User.updateOne(
-    { _id: userId },
-    { $set: { password: hash } },
-    { new: true }
-  );
   const user = await User.findById({ _id: userId });
-  await transporter
-    .sendMail({
-      to: user.email,
-      subject: "Password reset successfully!",
-      html: `Password reset operation was successful`,
-    })
-    .then(() => {
-      console.log(`Successfully sent the email to ${newUser.email}`);
+  user.setPassword(password);
+
+  user
+    .save()
+    .then(async () => {
+      console.log(`Modified user's password successfully, sending email`);
+
+      await transporter
+        .sendMail({
+          to: user.email,
+          subject: "Password reset successfully!",
+          html: `Password reset operation was successful`,
+        })
+        .then(() => {
+          console.log(`Successfully sent the email to ${newUser.email}`);
+        })
+        .catch((reason) => {
+          console.log(`Error sending email to ${newUser.email}, reason: `);
+          console.log(reason);
+        });
+
+      await passwordResetToken.deleteOne();
     })
     .catch((reason) => {
-      console.log(`Error sending email to ${newUser.email}, reason: `);
+      console.log(`Error setting user's password. Reason: `);
       console.log(reason);
     });
-
-  await passwordResetToken.deleteOne();
   return true;
 };
 
@@ -158,7 +186,7 @@ router.post(
 
         const verificationToken = await newUser.generateVerificationToken();
 
-        const url = `${process.env.SERVER_URL}/auth/verify/${newUser._id}/${verificationToken.token}`;
+        const url = `${SERVER_URL}/auth/verify/${newUser._id}/${verificationToken.token}`;
 
         await transporter
           .sendMail({
@@ -279,10 +307,19 @@ router.post(
   }
 );
 
+router.get("/reset-password", async (req, res) => {
+  return res.send(
+    `<form method="post"><input placeholder="New password" type="password" name='password' /></form>`
+  );
+});
+
 router.post("/reset-password", async (req, res) => {
+  console.log(
+    `Resetting the password. Data passed: userId: ${req.query.id}, token: ${req.query.token}, password: ${req.body.password}`
+  );
   const resetPasswordService = await resetPassword(
-    req.body.userId,
-    req.body.token,
+    req.query.id,
+    req.query.token,
     req.body.password
   );
   return res.json(resetPasswordService);

@@ -26,6 +26,11 @@ const UserSchema = mongoose.Schema({
     type: Boolean,
     required: true,
     default: false
+  },
+  numberOfCoins: {
+    type: Number,
+    required: true,
+    default: 0
   }
 });
 

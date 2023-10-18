@@ -9,6 +9,8 @@ import Token from "../models/token.mjs";
 
 const router = express.Router();
 
+const NUMBER_OF_COINS_GIVEN_ON_SIGNUP = 5
+
 const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE,
   auth: {
@@ -81,6 +83,7 @@ router.post(
 
     // Call setPassword function to hash password
     newUser.setPassword(req.body.password);
+    newUser.numberOfCoins = NUMBER_OF_COINS_GIVEN_ON_SIGNUP;
 
     console.log(`Created new user. Details: ${newUser.toString()}`);
 

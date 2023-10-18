@@ -6,6 +6,7 @@ import User from "../models/user.mjs";
 import { validateName, validatePassword } from "../utils/validators.mjs";
 import nodemailer from "nodemailer";
 import Token, { ResetToken } from "../models/token.mjs";
+import Blacklist from "../models/blacklist.mjs";
 import crypto from "crypto";
 
 const router = express.Router();
@@ -323,6 +324,30 @@ router.post("/reset-password", async (req, res) => {
     req.body.password
   );
   return res.json(resetPasswordService);
+});
+
+router.post("/logout", async (req, res) => {
+  try {
+    if (req.user) {
+      const authHeader = req.headers.authorization;
+      const accessToken = authHeader.split(" ")[1];
+
+      const checkIfBlacklisted = await Blacklist.findOne({
+        token: accessToken,
+      }); // Check if that token is blacklisted
+      // if true, send a no content response.
+      if (checkIfBlacklisted) return res.sendStatus(204);
+      // otherwise blacklist token
+      const newBlacklist = new Blacklist({
+        token: accessToken,
+      });
+      await newBlacklist.save();
+      
+      res.status(200).json({ message: "You are logged out!" });
+    } else {
+      return res.sendStatus(204);
+    }
+  } catch (error) {}
 });
 
 export const loginRequired = function (req, res, next) {

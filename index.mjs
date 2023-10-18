@@ -6,6 +6,7 @@ import "./loadEnvironment.mjs";
 import { createServer } from "node:http";
 import { join } from "node:path";
 import authentication from "./routes/authentication.mjs";
+import challenge from "./routes/challenge.mjs";
 import mongoose from "mongoose";
 import { defaultSequence } from "./utils/index.mjs";
 import { jsonParser, urlencodedParser } from "./utils/parsers.mjs";
@@ -56,6 +57,7 @@ app.use(function(req, res, next) {
 });
 
 app.use("/auth", authentication);
+app.use("/challenges", challenge);
 
 app.use(express.json());
 

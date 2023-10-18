@@ -132,7 +132,7 @@ router.post(
       const user = await User.findOne({ email: value });
 
       if (!user) {
-        throw new Error("E-mail already in use");
+        throw new Error("Invalid email or password");
       }
     })
     .withMessage("Invalid email or password"),

@@ -1,15 +1,15 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import { body, validationResult, param } from "express-validator";
 
 import Challenge from "../models/challenge.mjs";
 import { loginRequired } from "./authentication.mjs";
 import { sendNewChallenge } from "../utils/socket-io.mjs";
+import global from "../global.json" assert { type: "json" }
 
 const router = express.Router();
 
-const MINIMUM_BET_AMOUNT = 3;
-const WINNING_AMOUNT_FRACTION = 0.8; // the fraction of the total amount bet that goes to the winner
+const MINIMUM_BET_AMOUNT = global.MINIMUM_BET_AMOUNT;
+const WINNING_AMOUNT_FRACTION = global.WINNING_AMOUNT_FRACTION; // the fraction of the total amount bet that goes to the winner
 // i.e. if 2 players bet 30 coins, the winner should win 60 * WINNING_AMOUNT_FRACTION
 
 router.get("/", loginRequired, async (req, res) => {

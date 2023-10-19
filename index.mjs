@@ -14,8 +14,11 @@ import jsonwebtoken from "jsonwebtoken";
 import Blacklist from "./models/blacklist.mjs";
 import Role from "./models/role.mjs";
 import { socketConnection } from "./utils/socket-io.mjs";
+import { checkSchema } from "express-validator";
+import fs from "fs";
 
 const connectionString = process.env.ATLAS_URI || "";
+const GLOBAL_FILE_PATH = join( process.cwd(), "global.json" );
 
 console.log(`About to connect to MongoDB via mongoose`);
 mongoose.connect(connectionString).catch((error) => {
@@ -82,6 +85,29 @@ app.get("/", (req, res) => {
   res.sendFile(join(process.cwd(), 'index.html'));
   // return res.json({ message: "The server is live!" });
 });
+
+app.get("/global", (req, res) => {
+  let global = fs.readFileSync( join(process.cwd(), "global.json"), 
+    { encoding: "utf-8", flag: "r" }
+  )
+  res.json(JSON.parse(global))
+})
+
+app.post("/global", 
+  checkSchema({
+    MINIMUM_BET_AMOUNT: { isNumeric: { min: 1 } },
+    WINNING_AMOUNT_FRACTION: { isFloat: { min: 0, max: 1 } },
+    NUMBER_OF_COINS_GIVEN_ON_SIGNUP: { isNumeric: { min: 1 } },
+    MAXIMUM_BET_AMOUNT: { isNumeric: { min: 0 } }
+  })
+, (req, res) => {
+  fs.writeFileSync( GLOBAL_FILE_PATH, req.body, "utf-8" )
+
+  res.json({
+    message: "Variables set successfully",
+    data: req.body
+  })
+})
 
 const PORT = 4000;
 

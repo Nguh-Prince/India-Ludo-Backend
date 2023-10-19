@@ -9,6 +9,7 @@ import Token, { ResetToken } from "../models/token.mjs";
 import Blacklist from "../models/blacklist.mjs";
 import crypto from "crypto";
 import Role from "../models/role.mjs";
+import global from "../global.json" assert { type: "json" }
 
 const router = express.Router();
 
@@ -193,7 +194,7 @@ router.post(
 
     // Call setPassword function to hash password
     newUser.setPassword(req.body.password);
-    newUser.numberOfCoins = NUMBER_OF_COINS_GIVEN_ON_SIGNUP;
+    newUser.numberOfCoins = global.NUMBER_OF_COINS_GIVEN_ON_SIGNUP;
 
     let userRole = await Role.findOneAndUpdate(
       { name: "user" },

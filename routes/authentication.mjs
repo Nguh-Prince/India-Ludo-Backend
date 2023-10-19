@@ -80,13 +80,15 @@ const resetPassword = async (userId, token, password) => {
     .pbkdf2Sync(token, Number(bcryptSalt).toString(), 1000, 64, "sha512")
     .toString("hex");
 
+  console.log(`The hashed token is: ${hashedToken}`);
+
   const isValid = hashedToken === passwordResetToken.token;
 
   if (!isValid) {
     throw new Error("Invalid or expired password reset token");
   }
   const user = await User.findById({ _id: userId });
-  user.setPassword(password);
+  user.setPassword(password, true);
 
   user
     .save()
@@ -228,7 +230,7 @@ router.post(
             name: newUser.name,
             email: newUser.email,
             created: newUser.created,
-            verified: newUser.verified
+            verified: newUser.verified,
           },
         });
       })
@@ -257,7 +259,9 @@ router.post(
     console.log(`Calling the login endpoint`);
 
     if (!result.isEmpty()) {
-      res.status(400).send({ errors: result.array() });
+      return res.status(401).json({
+        message: "Authentication failed. Invalid email address or password.",
+      });
     }
 
     let query = {
@@ -272,9 +276,12 @@ router.post(
 
         if (!result || !result.checkPassword(req.body.password)) {
           return res.status(401).json({
-            message: "Authentication failed. Invalid user or password.",
+            message:
+              "Authentication failed. Invalid email address or password.",
           });
         }
+
+        console.log(`Deleting hash and salt from resut`);
 
         return res.json({
           token: jwt.sign(
@@ -286,6 +293,7 @@ router.post(
             },
             "RESTFULAPIs"
           ),
+          user: result.getUserObjectWithoutHash(),
         });
       })
       .catch((reason) => {
@@ -382,17 +390,45 @@ router.get("/reset-password", async (req, res) => {
   );
 });
 
-router.post("/reset-password", async (req, res) => {
-  console.log(
-    `Resetting the password. Data passed: userId: ${req.query.id}, token: ${req.query.token}, password: ${req.body.password}`
-  );
-  const resetPasswordService = await resetPassword(
-    req.query.id,
-    req.query.token,
-    req.body.password
-  );
-  return res.json(resetPasswordService);
-});
+router.post(
+  "/reset-password",
+  body("password")
+    .custom((value) => {
+      return validatePassword(value);
+    })
+    .withMessage(
+      "Password must be 8-30 characters, contain at least one of the following (uppercase letter, lowercase letter, number, special character)."
+    ),
+  async (req, res) => {
+    let result = validationResult(req);
+    let errors = [];
+
+    if (!result.isEmpty()) {
+      errors = result.array();
+    }
+
+    await resetPassword(
+      req.query.id,
+      req.query.token,
+      req.body.password
+    ).catch((reason) => {
+      console.log(`Error resetting the password. Reason`);
+      console.log(reason);
+
+      errors.push({
+        message: "Invalid or expired password reset token",
+      });
+    });
+
+    if (errors.length > 0) {
+      return res.status(400).json({ errors: errors });
+    }
+
+    return res.json({
+      message: "Password reset successfully"
+    });
+  }
+);
 
 router.post("/logout", async (req, res) => {
   try {

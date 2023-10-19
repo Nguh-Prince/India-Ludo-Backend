@@ -35,7 +35,12 @@ const UserSchema = mongoose.Schema({
   },
 });
 
-UserSchema.methods.setPassword = function (password) {
+UserSchema.methods.setPassword = function (password, validateStrength=false) {
+  if (validateStrength) {
+    if (!this.validatePassword(password)) {
+      throw new Error("Password must be 8-30 characters, contain at least one of the following (uppercase letter, lowercase letter, number, special character).")
+    }
+  }
   // Creating a unique salt for a particular user
   this.salt = crypto.randomBytes(16).toString("hex");
 
@@ -105,6 +110,19 @@ UserSchema.methods.generateVerificationToken = async function () {
   }).save();
 
   return verificationToken;
+};
+
+UserSchema.methods.getUserObjectWithoutHash = function () {
+  const user = this;
+
+  return {
+    _id: user._id,
+    verified: user.verified,
+    created: user.created,
+    name: user.name,
+    email: user.email,
+    roleId: user.roleId,
+  };
 };
 
 export default mongoose.model("User", UserSchema);

@@ -8,6 +8,7 @@ import nodemailer from "nodemailer";
 import Token, { ResetToken } from "../models/token.mjs";
 import Blacklist from "../models/blacklist.mjs";
 import crypto from "crypto";
+import Role from "../models/role.mjs";
 
 const router = express.Router();
 
@@ -115,6 +116,22 @@ const resetPassword = async (userId, token, password) => {
   return true;
 };
 
+const userWithEmailExists = async (email) => {
+  const user = await User.findOne({ email: email });
+
+  if (user) {
+    throw new Error("E-mail already in use");
+  }
+};
+
+const userWithEmailDoesNotExist = async (email) => {
+  const user = await User.findOne({ email: email });
+
+  if (!user) {
+    throw new Error("No user exists with this eamil address");
+  }
+};
+
 router.get("/", (req, res) => {
   return res.json({
     message: "Routing to authentication.mjs endpoints",
@@ -138,11 +155,7 @@ router.post(
   ),
   body("email")
     .custom(async (value) => {
-      const user = await User.findOne({ email: value });
-
-      if (user) {
-        throw new Error("E-mail already in use");
-      }
+      await userWithEmailExists(value)
     })
     .withMessage("The email address is already taken"),
   body("password")
@@ -157,7 +170,7 @@ router.post(
       return validateName(value);
     })
     .withMessage("First and last name required"),
-  (req, res) => {
+  async (req, res) => {
     console.log(`Sign up endpoint requested, request body: `);
     console.log(req.body);
     const result = validationResult(req);
@@ -177,7 +190,13 @@ router.post(
     // Call setPassword function to hash password
     newUser.setPassword(req.body.password);
 
-    console.log(`Created new user. Details: ${newUser.toString()}`);
+    let userRole = await Role.findOneAndUpdate(
+      { name: "user" },
+      { $set: { name: "user" } },
+      { upsert: true }
+    );
+
+    newUser.roleId = userRole._id;
 
     // Save newUser object to database
     newUser
@@ -234,7 +253,7 @@ router.post(
     .withMessage("Invalid email or password"),
   (req, res) => {
     const result = validationResult(req);
-    console.log(`Calling the login endpoint`)
+    console.log(`Calling the login endpoint`);
 
     if (!result.isEmpty()) {
       res.status(400).send({ errors: result.array() });
@@ -244,7 +263,8 @@ router.post(
       email: req.body.email,
     };
 
-    User.findOne(query).populate("roleId")
+    User.findOne(query)
+      .populate("roleId")
       .then((result) => {
         console.log(`Query returned result: `);
         console.log(result);
@@ -257,7 +277,12 @@ router.post(
 
         return res.json({
           token: jwt.sign(
-            { email: result.email, fullName: result.name, _id: result._id, role: result.roleId },
+            {
+              email: result.email,
+              fullName: result.name,
+              _id: result._id,
+              role: result.roleId,
+            },
             "RESTFULAPIs"
           ),
         });
@@ -295,16 +320,33 @@ router.get("/verify/:id/:token", async (req, res) => {
 router.post(
   "/request-password-reset",
   body("email").trim().isEmail().withMessage("Invalid email passed"),
+  body("email")
+    .trim()
+    .custom(async (value) => {
+      await userWithEmailDoesNotExist(value);
+    }).withMessage("No user exists with this email address"),
   async (req, res, next) => {
     const result = validationResult(req);
 
     if (!result.isEmpty()) {
-      res.status(400).send({ errors: result.array() });
+      return res.status(400).send({ errors: result.array() });
     }
 
     const requestPasswordResetService = await requestPasswordReset(
       req.body.email
-    );
+    ).catch((reason) => {
+      console.log(`Error requesting password reset, reason: `);
+      console.log(reason);
+
+      res.status(404).send({
+        errors: [
+          {
+            type: "body",
+            msg: reason,
+          },
+        ],
+      });
+    });
     return res.json(requestPasswordResetService);
   }
 );

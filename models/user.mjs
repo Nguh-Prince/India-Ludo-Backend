@@ -6,6 +6,7 @@ import {
   validatePassword,
 } from "../utils/validators.mjs";
 import Token from "./token.mjs";
+const Schema = mongoose.Schema;
 
 const UserSchema = mongoose.Schema({
   name: {
@@ -25,11 +26,21 @@ const UserSchema = mongoose.Schema({
   verified: {
     type: Boolean,
     required: true,
-    default: false
-  }
+    default: false,
+  },
+  roleId: {
+    type: Schema.Types.ObjectId,
+    ref: "role",
+    required: true,
+  },
 });
 
-UserSchema.methods.setPassword = function (password) {
+UserSchema.methods.setPassword = function (password, validateStrength=false) {
+  if (validateStrength) {
+    if (!this.validatePassword(password)) {
+      throw new Error("Password must be 8-30 characters, contain at least one of the following (uppercase letter, lowercase letter, number, special character).")
+    }
+  }
   // Creating a unique salt for a particular user
   this.salt = crypto.randomBytes(16).toString("hex");
 
@@ -78,15 +89,40 @@ UserSchema.methods._validate = function (password) {
   );
 };
 
+function generateOTP(length = 4) {
+  var digits = "0123456789";
+  let OTP = "";
+  for (let i = 0; i < length; i++) {
+    OTP += digits[Math.floor(Math.random() * 10)];
+  }
+  return OTP;
+}
+
 UserSchema.methods.generateVerificationToken = async function () {
   const user = this;
+
+  await Token.deleteMany({ userId: user });
 
   const verificationToken = await new Token({
     userId: user._id,
     token: crypto.randomBytes(32).toString("hex"),
-  }).save()
+    code: generateOTP(),
+  }).save();
 
   return verificationToken;
+};
+
+UserSchema.methods.getUserObjectWithoutHash = function () {
+  const user = this;
+
+  return {
+    _id: user._id,
+    verified: user.verified,
+    created: user.created,
+    name: user.name,
+    email: user.email,
+    roleId: user.roleId,
+  };
 };
 
 export default mongoose.model("User", UserSchema);

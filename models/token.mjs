@@ -1,3 +1,4 @@
+import e from "express";
 import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
@@ -14,7 +15,12 @@ const TokenSchema = new Schema({
   created: {
     type: Date,
     default: Date.now,
+    expires: 3600
   },
+  code: {
+    type: String,
+    required: true
+  }
 });
 
 const ResetTokenSchema = new Schema({

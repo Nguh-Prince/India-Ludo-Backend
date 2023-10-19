@@ -155,7 +155,7 @@ router.post(
   ),
   body("email")
     .custom(async (value) => {
-      await userWithEmailExists(value)
+      await userWithEmailExists(value);
     })
     .withMessage("The email address is already taken"),
   body("password")
@@ -212,7 +212,7 @@ router.post(
           .sendMail({
             to: req.body.email,
             subject: "Verify Account",
-            html: `Click <a href='${url}'>here</a> to confirm your email. This link expires in 7 days after which your account will be automatically deleted if it is not verified`,
+            html: `Input the code: ${verificationToken.code} to confirm your account, or click <a href='${url}'>here</a>. The link and code expire in 1 hour`,
           })
           .then(() => {
             console.log(`Successfully sent the email to ${newUser.email}`);
@@ -228,6 +228,7 @@ router.post(
             name: newUser.name,
             email: newUser.email,
             created: newUser.created,
+            verified: newUser.verified
           },
         });
       })
@@ -317,6 +318,29 @@ router.get("/verify/:id/:token", async (req, res) => {
   }
 });
 
+router.get("/verify-with-code/:id/:code", async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id });
+
+    if (!user) return res.status(400).send("Invalid link");
+
+    const token = await Token.findOne({
+      userId: user._id,
+      code: req.params.code,
+    });
+
+    if (!token) return res.status(400).send("Invalid link");
+
+    await User.findById(user._id).updateOne({ verified: true });
+    await Token.findByIdAndRemove(token._id);
+
+    res.send("Email verified successfully");
+  } catch (error) {
+    res.status(400).send("An error occured");
+    console.log(error);
+  }
+});
+
 router.post(
   "/request-password-reset",
   body("email").trim().isEmail().withMessage("Invalid email passed"),
@@ -324,7 +348,8 @@ router.post(
     .trim()
     .custom(async (value) => {
       await userWithEmailDoesNotExist(value);
-    }).withMessage("No user exists with this email address"),
+    })
+    .withMessage("No user exists with this email address"),
   async (req, res, next) => {
     const result = validationResult(req);
 

@@ -26,13 +26,13 @@ const UserSchema = mongoose.Schema({
   verified: {
     type: Boolean,
     required: true,
-    default: false
+    default: false,
   },
   roleId: {
     type: Schema.Types.ObjectId,
     ref: "role",
     required: true,
-  }
+  },
 });
 
 UserSchema.methods.setPassword = function (password) {
@@ -84,13 +84,25 @@ UserSchema.methods._validate = function (password) {
   );
 };
 
+function generateOTP(length = 4) {
+  var digits = "0123456789";
+  let OTP = "";
+  for (let i = 0; i < length; i++) {
+    OTP += digits[Math.floor(Math.random() * 10)];
+  }
+  return OTP;
+}
+
 UserSchema.methods.generateVerificationToken = async function () {
   const user = this;
+
+  await Token.deleteMany({ userId: user });
 
   const verificationToken = await new Token({
     userId: user._id,
     token: crypto.randomBytes(32).toString("hex"),
-  }).save()
+    code: generateOTP(),
+  }).save();
 
   return verificationToken;
 };

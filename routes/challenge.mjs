@@ -1,9 +1,10 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import { body, validationResult, checkSchema } from "express-validator";
+import { body, validationResult, param } from "express-validator";
 
 import Challenge from "../models/challenge.mjs";
 import { loginRequired } from "./authentication.mjs";
+import { sendNewChallenge } from "../utils/socket-io.mjs";
 
 const router = express.Router();
 
@@ -38,7 +39,7 @@ router.get("/", loginRequired, async (req, res) => {
   //   challenges.merge({ $where: function() {
   //     return this.participants.length < this.numberOfParticipants
   //   } })
-  // } 
+  // }
 
   if (!challenges) {
     return res.status(500).send("Error retrieving challenges");
@@ -81,14 +82,21 @@ router.post(
       newChallenge.bet *
       WINNING_AMOUNT_FRACTION;
 
+    newChallenge.populate("creatorId")
+
     newChallenge
       .save()
-      .then(async () => {
-        console.log(`Challenge saved successfully`);
+      .then(async (value) => {
+        value = await value.populate("creatorId");
+
+        console.log(`Challenge saved successfully, broadcasting: `);
+        console.log(value);
+
+        sendNewChallenge(value);
 
         return res.status(200).send({
           message: "Challenge created successfully",
-          data: newChallenge,
+          data: value,
         });
       })
       .catch((reason) => {
@@ -101,5 +109,60 @@ router.post(
       });
   }
 );
+
+router.post(
+  "/:id/join",
+  loginRequired,
+  param("id").isMongoId().custom(async (value) => {
+    let challenge = await Challenge.findById(value);
+
+    if (!challenge) {
+      throw new Error(`No challenge exists with this id: ${value}`)
+    }
+
+    if (challenge.participants.length >= challenge.numberOfParticipants) {
+      throw new Error(`The challenge already has the required number of participants`);
+    }
+  }),
+  async (req, res) => {
+    let result = validationResult(req);
+
+    if (!result.isEmpty()) {
+      return res.status(400).json({errors: result.array()})
+    }
+    
+    let user = req.user;
+    let challenge = await Challenge.findById(req.params.id);
+
+    let userAlreadyJoined = false;
+
+    for (let participant of challenge.participants) {
+      if (participant.userId.equals(user._id)) {
+        userAlreadyJoined = true
+      }
+
+      if (userAlreadyJoined) break;
+    }
+
+    if (userAlreadyJoined) {
+      return res.status(403).json({errors: [ 
+        {
+          message: "You have already joined this challenge."
+        }
+       ]})
+    } else {
+      let player = {
+        userId: user._id
+      }
+      challenge.participants.push(player);
+      challenge.save();
+
+      return res.json({
+        message: "Successfully joined the challenge",
+        data: challenge
+      })
+    }
+  }
+)
 
 export default router;

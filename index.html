@@ -43,6 +43,11 @@
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
       });
+
+      socket.on("newChallenge", (msg) => {
+        console.log(`New challenge gotten`)
+        console.log(msg)
+      })
     </script>
   </body>
 </html>

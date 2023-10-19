@@ -67,3 +67,7 @@ export const socketConnection = (server) => {
     });
   });
 };
+
+export const sendNewChallenge = (challenge) => {
+  io.emit("newChallenge", challenge);
+}

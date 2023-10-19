@@ -60,8 +60,6 @@ app.use(async function (req, res, next) {
         if (err) req.user = undefined;
         req.user = decode;
 
-        console.log(`In jwt verification, decode is: `);
-        console.log(decode);
         next();
       });
     } else { // token is blacklisted, the user logged out
@@ -81,8 +79,8 @@ app.use("/challenges", challenge);
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  // res.sendFile(join(process.cwd(), 'index.html'));
-  return res.json({ message: "The server is live!" });
+  res.sendFile(join(process.cwd(), 'index.html'));
+  // return res.json({ message: "The server is live!" });
 });
 
 const PORT = 4000;

@@ -130,4 +130,4 @@ UserSchema.methods.getUserObjectWithoutHash = function () {
   };
 };
 
-export default mongoose.model("User", UserSchema);
+export default mongoose.model("user", UserSchema);
